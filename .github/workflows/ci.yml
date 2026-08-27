@@ -9,10 +9,12 @@ on:
       - opened
       - synchronize
       - reopened
+      - closed
 
 jobs:
   build:
     name: Lint & Test
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,13 +36,26 @@ jobs:
 
   n8n-review:
     name: AI Code Review
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Trigger n8n AI Review
         env:
           PAYLOAD: ${{ toJSON(github.event) }}
         run: |
           curl -s -X POST https://automation.orbisdata.cl/webhook/github-pr-review \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+  n8n-merge-metrics:
+    name: Record Merge Metrics
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger n8n Merge Metrics
+        env:
+          PAYLOAD: ${{ toJSON(github.event) }}
+        run: |
+          curl -s -X POST https://automation.orbisdata.cl/webhook/github-pr-merged \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
